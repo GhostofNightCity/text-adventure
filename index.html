@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Adventure | GhostofNightCity</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&amp;display=swap');
+        
+        body {
+            background-color: #0a0a0a;
+            color: #00ff9d;
+            font-family: 'VT323', monospace;
+        }
+        
+        .terminal {
+            background-color: #111111;
+            border: 2px solid #00ff9d;
+            box-shadow: 0 0 20px rgba(0, 255, 157, 0.2);
+        }
+        
+        .output {
+            font-size: 1.1rem;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .input-line {
+            font-size: 1.2rem;
+        }
+        
+        .command {
+            color: #00ff9d;
+        }
+        
+        .response {
+            color: #a0f0c0;
+        }
+        
+        .location {
+            color: #ffcc00;
+            font-weight: bold;
+        }
+        
+        .item {
+            color: #ff99cc;
+        }
+        
+        .system {
+            color: #888888;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body class="bg-[#0a0a0a] text-[#00ff9d] min-h-screen p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-5xl font-bold tracking-wider">TEXT ADVENTURE</h1>
+                <p class="text-[#00ff9d]/70 text-xl">A Grok Collaboration</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="restartGame()" 
+                        class="px-5 py-2 bg-[#111] border border-[#00ff9d] hover:bg-[#1a1a1a] transition-colors flex items-center gap-2">
+                    <i class="fas fa-redo"></i>
+                    <span>RESTART</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Container -->
+        <div class="terminal rounded-xl p-6 shadow-2xl">
+            <!-- Status Bar -->
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-[#00ff9d]/30">
+                <div>
+                    <span class="text-sm opacity-70">LOCATION:</span> 
+                    <span id="location-name" class="location text-2xl ml-2">The Starting Room</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-sm opacity-70">INVENTORY:</span>
+                    <span id="inventory-count" class="ml-2 text-xl">0 items</span>
+                </div>
+            </div>
+
+            <!-- Output -->
+            <div id="output" 
+                 class="output h-[420px] overflow-y-auto mb-4 p-4 bg-black/40 rounded-lg border border-[#00ff9d]/20 font-mono text-[1.05rem]">
+            </div>
+
+            <!-- Input -->
+            <div class="flex items-center gap-3 bg-black/60 rounded-lg px-4 py-3 border border-[#00ff9d]/30">
+                <span class="text-[#00ff9d] text-2xl">&gt;</span>
+                <input id="command-input" 
+                       type="text" 
+                       class="flex-1 bg-transparent border-none outline-none text-[#00ff9d] text-2xl placeholder-[#00ff9d]/40 font-mono"
+                       placeholder="Type a command... (try 'look' or 'help')"
+                       onkeydown="if (event.key === 'Enter') processInput()">
+                <button onclick="processInput()"
+                        class="px-6 py-1 bg-[#00ff9d] text-black font-bold hover:bg-white transition-colors">
+                    ENTER
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-4 text-center text-xs opacity-60">
+            Commands: look | go [direction] | take [item] | use [item] | inventory | help | restart
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        let gameState = {
+            location: 'start',
+            inventory: [],
+            flags: {},
+            visited: new Set()
+        };
+
+        // Game World
+        const world = {
+            'start': {
+                name: 'The Starting Room',
+                description: 'You wake up in a dimly lit room. The walls are made of cold concrete. There is a heavy metal door to the north and a small table with a flickering lamp to the east.',
+                exits: { north: 'corridor', east: 'table_room' },
+                items: ['lamp'],
+                onLook: () => {
+                    if (!gameState.flags.lampOn) {
+                        return 'The lamp is off. It looks like it needs power.';
+                    }
+                    return null;
+                }
+            },
+            'corridor': {
+                name: 'Narrow Corridor',
+                description: 'A long concrete corridor stretches ahead. Emergency lights flicker overhead. There are doors to the west and east, and the corridor continues north.',
+                exits: { south: 'start', north: 'security', west: 'storage', east: 'office' },
+                items: []
+            },
+            'table_room': {
+                name: 'Small Side Room',
+                description: 'A tiny room with a metal table. The lamp sits here. On the table you see a small keycard.',
+                exits: { west: 'start' },
+                items: ['keycard'],
+                onEnter: () => {
+                    if (gameState.flags.lampOn) {
+                        return 'The lamp casts long shadows across the room.';
+                    }
+                }
+            },
+            'storage': {
+                name: 'Storage Closet',
+                description: 'Shelves line the walls. Most are empty, but you spot a flashlight and an old battery pack.',
+                exits: { east: 'corridor' },
+                items: ['flashlight', 'battery']
+            },
+            'office': {
+                name: 'Abandoned Office',
+                description: 'An old office with a dusty desk and a broken computer terminal. Papers are scattered everywhere.',
+                exits: { west: 'corridor' },
+                items: ['paper']
+            },
+            'security': {
+                name: 'Security Checkpoint',
+                description: 'A reinforced door blocks the way north. There is a card reader on the wall. The door looks like it requires a keycard to open.',
+                exits: { south: 'corridor' },
+                items: [],
+                locked: true,
+                requiredItem: 'keycard',
+                onTryExit: (direction) => {
+                    if (direction === 'north' && gameState.flags.doorOpen !== true) {
+                        return 'The security door is locked. You need a keycard.';
+                    }
+                }
+            },
+            'win': {
+                name: 'Freedom',
+                description: 'You step through the security door into the cool night air. You are free. Congratulations — you escaped the facility.',
+                exits: {},
+                items: []
+            }
+        };
+
+        function addMessage(text, type = 'response') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            
+            if (type === 'command') {
+                div.innerHTML = `<span class="command">&gt; ${text}</span>`;
+            } else if (type === 'location') {
+                div.innerHTML = `<span class="location">${text}</span>`;
+            } else if (type === 'system') {
+                div.innerHTML = `<span class="system">${text}</span>`;
+            } else {
+                div.innerHTML = text;
+            }
+            
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function updateStatus() {
+            const loc = world[gameState.location];
+            document.getElementById('location-name').textContent = loc ? loc.name : 'Unknown';
+            document.getElementById('inventory-count').textContent = `${gameState.inventory.length} items`;
+        }
+
+        function describeLocation() {
+            const loc = world[gameState.location];
+            if (!loc) return;
+
+            addMessage(loc.name, 'location');
+            addMessage(loc.description);
+
+            // Exits
+            const exitList = Object.keys(loc.exits);
+            if (exitList.length > 0) {
+                addMessage(`<span class="opacity-70">Exits:</span> ${exitList.join(', ')}`);
+            }
+
+            // Items
+            if (loc.items && loc.items.length > 0) {
+                addMessage(`<span class="opacity-70">You see:</span> <span class="item">${loc.items.join(', ')}</span>`);
+            }
+
+            // Custom look
+            if (loc.onLook) {
+                const extra = loc.onLook();
+                if (extra) addMessage(extra);
+            }
+
+            // Visited flag
+            gameState.visited.add(gameState.location);
+        }
+
+        function processInput() {
+            const input = document.getElementById('command-input');
+            const cmd = input.value.trim().toLowerCase();
+            if (!cmd) return;
+
+            addMessage(cmd, 'command');
+            input.value = '';
+
+            const loc = world[gameState.location];
+
+            // Built-in commands
+            if (cmd === 'help') {
+                addMessage('Available commands: <b>look</b>, <b>go [direction]</b>, <b>take [item]</b>, <b>use [item]</b>, <b>inventory</b>, <b>help</b>, <b>restart</b>');
+                return;
+            }
+
+            if (cmd === 'restart') {
+                restartGame();
+                return;
+            }
+
+            if (cmd === 'look' || cmd === 'examine') {
+                describeLocation();
+                return;
+            }
+
+            if (cmd === 'inventory' || cmd === 'i') {
+                if (gameState.inventory.length === 0) {
+                    addMessage('Your inventory is empty.');
+                } else {
+                    addMessage(`You are carrying: <span class="item">${gameState.inventory.join(', ')}</span>`);
+                }
+                return;
+            }
+
+            // Movement
+            if (cmd.startsWith('go ') || ['north','south','east','west','n','s','e','w'].includes(cmd)) {
+                let direction = cmd.replace('go ', '').trim();
+                const dirMap = { n: 'north', s: 'south', e: 'east', w: 'west' };
+                direction = dirMap[direction] || direction;
+
+                if (loc.exits && loc.exits[direction]) {
+                    // Check locked doors
+                    if (loc.locked && loc.requiredItem && direction === 'north') {
+                        if (!gameState.inventory.includes(loc.requiredItem)) {
+                            const msg = loc.onTryExit ? loc.onTryExit(direction) : 'The way is blocked.';
+                            addMessage(msg || 'You cannot go that way.');
+                            return;
+                        } else {
+                            gameState.flags.doorOpen = true;
+                        }
+                    }
+
+                    gameState.location = loc.exits[direction];
+                    
+                    // Win condition
+                    if (gameState.location === 'win') {
+                        addMessage('You step into freedom. You made it out alive.', 'system');
+                        addMessage('Thanks for playing! Type <b>restart</b> to play again.', 'system');
+                    } else {
+                        describeLocation();
+                    }
+                    updateStatus();
+                } else {
+                    addMessage('You cannot go that way.');
+                }
+                return;
+            }
+
+            // Take item
+            if (cmd.startsWith('take ')) {
+                const item = cmd.replace('take ', '').trim();
+                if (loc.items && loc.items.includes(item)) {
+                    gameState.inventory.push(item);
+                    loc.items = loc.items.filter(i => i !== item);
+                    addMessage(`You take the <span class="item">${item}</span>.`);
+                    updateStatus();
+                } else {
+                    addMessage(`There is no ${item} here.`);
+                }
+                return;
+            }
+
+            // Use item
+            if (cmd.startsWith('use ')) {
+                const item = cmd.replace('use ', '').trim();
+                if (!gameState.inventory.includes(item)) {
+                    addMessage(`You don't have a ${item}.`);
+                    return;
+                }
+
+                if (item === 'lamp' && gameState.location === 'start') {
+                    gameState.flags.lampOn = true;
+                    addMessage('You turn on the lamp. The room becomes much brighter.');
+                    describeLocation();
+                } else if (item === 'keycard' && gameState.location === 'security') {
+                    gameState.flags.doorOpen = true;
+                    addMessage('You swipe the keycard. The security door slides open with a hiss!');
+                    addMessage('You can now go <b>north</b> to freedom.');
+                } else if (item === 'flashlight' && gameState.inventory.includes('battery')) {
+                    addMessage('You combine the flashlight and battery. It works! The beam cuts through the darkness.');
+                    gameState.flags.hasLight = true;
+                } else {
+                    addMessage(`You can't think of a use for the ${item} right now.`);
+                }
+                return;
+            }
+
+            addMessage('I don\'t understand that command. Try <b>help</b> for a list.');
+        }
+
+        function restartGame() {
+            gameState = {
+                location: 'start',
+                inventory: [],
+                flags: {},
+                visited: new Set()
+            };
+            
+            const output = document.getElementById('output');
+            output.innerHTML = '';
+            
+            addMessage('The world resets around you...', 'system');
+            describeLocation();
+            updateStatus();
+            
+            // Focus input
+            setTimeout(() => {
+                document.getElementById('command-input').focus();
+            }, 100);
+        }
+
+        // Initialize game
+        function initGame() {
+            const output = document.getElementById('output');
+            output.innerHTML = '';
+            
+            addMessage('You slowly open your eyes...', 'system');
+            addMessage('Everything is hazy. You don\'t remember how you got here.', 'system');
+            
+            describeLocation();
+            updateStatus();
+            
+            // Welcome tip
+            setTimeout(() => {
+                addMessage('<span class="system">Tip: Type <b>look</b> to examine your surroundings or <b>help</b> for commands.</span>', 'system');
+            }, 800);
+
+            // Focus the input
+            document.getElementById('command-input').focus();
+        }
+
+        // Boot the game
+        window.onload = function() {
+            initGame();
+        };
+
+        // Allow clicking anywhere to focus input
+        document.addEventListener('click', () => {
+            document.getElementById('command-input').focus();
+        });
+    </script>
+</body>
+</html>
