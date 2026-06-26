@@ -1,36 +1,54 @@
-# Text Adventure
+# Cyberpunk 2077: SECOND_CHANCE - Text Adventure Prototype
 
-A collaborative text adventure game built with Grok.
+A playable text adventure based on the first four chapters of **Bob's** (GhostofNightCity) *Cyberpunk 2077: SECOND_CHANCE* fanfic on Royal Road.
+
+**Protagonist:** Will Scrap (ex-NCPD, burnout, redemption arc)
 
 ## How to Play
 
-1. Open `index.html` in any modern web browser (Chrome, Firefox, Edge, etc.)
-2. Type commands in the input box at the bottom
+```bash
+python will_scrap_text_adventure.py
+```
 
-### Common Commands
-- `look` or `examine` - Look around your current location
-- `go north` / `north` / `n` - Move in a direction
-- `take [item]` - Pick up an item
-- `use [item]` - Use an item from your inventory
-- `inventory` or `i` - See what you're carrying
-- `help` - Show available commands
-- `restart` - Start over
+- Pure Python 3, no external dependencies
+- Numbered choices (easy and reliable)
+- Tracks money, moral alignment, inventory, and story flags
+- Three possible paths + three different endings
 
-## About This Game
+## Story Summary (No Major Spoilers)
 
-This is a self-contained single-file text adventure with a clean terminal-style interface.
+You are Will Scrap. Tonight you tried to end it all. The gun jammed. Night City isn't done with you yet.
 
-Feel free to expand the story, add more locations, items, and puzzles.
+A walk in the acid rain. A pimp. A Delamain cab. Regina Jones with a job offer. Maelstrom gangers. A ripperdoc who needs saving.
 
-## GitHub Pages
+After the dust settles, you have a real choice for the first time in a long time:
 
-To play online:
-1. Go to the repo Settings
-2. Pages → Source: Deploy from a branch → Branch: `main` /root
-3. Save
+- Stay and help at Kowalski's Clinic (Redemption path)
+- Go back to the merc life (Ruthless path)
+- Try to walk the line between both (Hybrid path)
 
-Your game will be live at: `https://ghostofnightcity.github.io/text-adventure/`
+## Current State
+
+This is a **prototype** covering the events of the first four chapters.
+It demonstrates the core systems (state tracking, branching, multiple endings) and serves as a foundation for expansion.
+
+The full fanfic is available on Royal Road: [Cyberpunk 2077: SECOND_CHANCE](https://www.royalroad.com/fiction/...) (link to be added)
+
+## Future Plans (Ideas)
+
+- Expand to more chapters
+- Add more locations, characters, and meaningful choices
+- Deeper inventory and crafting
+- Relationship tracking with Kowalski, Regina, etc.
+- Multiple ways to approach the Maelstrom fight
+- Badges / achievements
+- Save / load system
+
+## Credits
+
+- Story & Characters: Bob (GhostofNightCity) — author of the *SECOND_CHANCE* fanfic
+- Python prototype: Built collaboratively with Grok
 
 ---
 
-Built with ❤️ by Grok for Robert (GhostofNightCity)
+*Night City always finds a way to keep you alive... even when you don't want it to.*
